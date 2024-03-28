@@ -40,29 +40,16 @@ def cart2polar_adv(input_xyz):
     return np.stack((rho, phi, input_xyz[:, 2]), axis=1)
 
 
-def cart2logpolar(input_xyz):
+def cart2logpolar(input_xyz, base):
     #rho = self_log(np.sqrt(input_xyz[:, 0] ** 2 + input_xyz[:, 1] ** 2), 2)  # base=e
     '''
     先用自然指数e做底
     r=ln(sqrt(x^2+y^2))
     phi = atan2(y,x)
     '''
-    rho = np.log(np.sqrt(input_xyz[:, 0] ** 2 + input_xyz[:, 1] ** 2)) # base=e
+    rho = np.log(np.sqrt(input_xyz[:, 0] ** 2 + input_xyz[:, 1] ** 2)) / np.log(base) # base=e
     phi = np.arctan2(input_xyz[:, 1], input_xyz[:, 0])
     return np.stack((rho, phi, input_xyz[:, 2]), axis=1)
-
-def test(xyz):
-    x = xyz[:, 0].T
-    y = xyz[:, 1].T
-    rho = np.log(np.sqrt(xyz[:, 0] ** 2 + xyz[:, 1] ** 2)) # base=e
-    phi = np.arctan2(xyz[:, 1], xyz[:, 0])
-
-    xx = np.exp(rho) * np.cos(phi)
-    yy = np.exp(rho) * np.sin(phi)
-    a = x - xx
-    b = y - yy
-    print(a, b)
-
 
 def polar2cat(input_xyz_polar):
     '''
@@ -73,13 +60,14 @@ def polar2cat(input_xyz_polar):
     y = input_xyz_polar[:, 0] * np.sin(input_xyz_polar[:, 1])
     return np.stack((x, y, input_xyz_polar[:, 2]), axis=1)
 
-def logpolar2cat(input_xyz_logpolar):
+def logpolar2cat(input_xyz_logpolar, base):
     '''
     x = e^p cos(phi)
     y = e^p sin(phi)
     '''
-    x = np.exp(input_xyz_logpolar[:, 0]) * np.cos(input_xyz_logpolar[:, 1])
-    y = np.exp(input_xyz_logpolar[:, 0]) * np.sin(input_xyz_logpolar[:, 1])
+    r = np.power(base, input_xyz_logpolar[:, 0])
+    x = r * np.cos(input_xyz_logpolar[:, 1])
+    y = r * np.sin(input_xyz_logpolar[:, 1])
     return np.stack((x, y, input_xyz_logpolar[:, 2]), axis=1)
 
 
@@ -90,6 +78,7 @@ if __name__ == '__main__':
     labell = glob.glob(seq10 + "/*.label")
     seq_len = len(pcl)
     color_map, remap = util.load_colormap('./data/semantic-kitti.yaml')
+    base = 1.4
     for i in range(0, seq_len):
         fpc = pcl[i]  # pc
         flabel = labell[i]  # label
@@ -100,8 +89,7 @@ if __name__ == '__main__':
         #xyz = polar2cat(xyz_polar)
         #aaa = xyz - pc[:, :3]
         #print(aaa)
-        test(pc[:, :3])
-        xyz_logpolar = cart2logpolar(pc[:, :3])
-        xyz1 = logpolar2cat(xyz_logpolar)
-        bbb = xyz1 - xyz_logpolar
-        print(bbb)
+        xyz_logpolar = cart2logpolar(pc[:, :3], base)
+        xyz1 = logpolar2cat(xyz_logpolar, base)
+        bbb = xyz1 - pc[:, :3] #xyz_logpolar
+        print(np.around(bbb, decimals=2))
